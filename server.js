@@ -6,6 +6,8 @@ import express from 'express';
 import cors from 'cors';
 // Import the file system module
 import fs from 'fs';
+import fetch from 'node-fetch';
+
 
 // Create an express application
 const app = express();
@@ -54,33 +56,47 @@ app.get('/zones/nearby', (req, res) => {
 });
 
 // Define a POST endpoint to create new zones
-app.post('/zones', (req, res) => {
-  // Extract the zone details from the request body
-  const { name, lat, lng, dangerLevel } = req.body;
+app.post('/zones', async (req, res) => {
+  const { lat, lng, dangerLevel } = req.body;
 
-  // Check if any of the required fields are missing
-  if (!name || !lat || !lng || !dangerLevel) {
-    return res.status(400).json({ error: 'All fields (name, lat, lng, dangerLevel) are required' });
+  if (!lat || !lng || !dangerLevel) {
+    return res.status(400).json({ error: 'lat, lng, and dangerLevel are required' });
   }
 
-  // Create a new zone object
-  const newZone = {
-    id: zones.length ? Math.max(...zones.map(z => z.id)) + 1 : 1,
-    name,
-    lat: parseFloat(lat),
-    lng: parseFloat(lng),
-    dangerLevel
-  };
+  try {
+    // Step 1: Reverse geocode the location
+    const nominatimURL = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`;
+    const response = await fetch(nominatimURL, {
+      headers: {
+        'User-Agent': 'KeepSafeApp/1.0 (student@example.com)'
+      }
+    });
 
-  // Add the new zone to the zones array
-  zones.push(newZone);
+    const data = await response.json();
 
-  // Return a success message with the newly created zone
-  res.status(201).json({
-    message: "Zone created successfully",
-    zone: newZone
-  });
+    const name = data.display_name || `Unnamed zone at ${lat}, ${lng}`;
+
+    // Step 2: Create new zone
+    const newZone = {
+      id: zones.length ? Math.max(...zones.map(z => z.id)) + 1 : 1,
+      name,
+      lat: parseFloat(lat),
+      lng: parseFloat(lng),
+      dangerLevel
+    };
+
+    zones.push(newZone);
+
+    res.status(201).json({
+      message: "Zone created and enriched with location info",
+      zone: newZone
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch location details" });
+  }
 });
+
 
 // Start the server and listen for incoming requests
 app.listen(PORT, () => {
