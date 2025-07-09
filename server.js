@@ -1,3 +1,4 @@
+import haversineDistance from './utils/haversine.js';
 import express from 'express';  
 import cors from 'cors';
 import fs from 'fs';
@@ -10,6 +11,7 @@ const zones = JSON.parse(fs.readFileSync('data/zone.json', 'utf-8'));
 // console.log(zones)
 
 app.use(cors());
+app.use(express.json())
 
 app.get('/zones/nearby', (req, res) => {
   const { lat, lng } = req.query;
@@ -31,6 +33,29 @@ app.get('/zones/nearby', (req, res) => {
     .sort((a, b) => a.distance_km - b.distance_km);
 
   res.json({ nearby_zones: nearby });
+});
+
+app.post('/zones', (req, res) => {
+  const { name, lat, lng, dangerLevel } = req.body;
+
+  if (!name || !lat || !lng || !dangerLevel) {
+    return res.status(400).json({ error: 'All fields (name, lat, lng, dangerLevel) are required' });
+  }
+
+  const newZone = {
+    id: zones.length ? Math.max(...zones.map(z => z.id)) + 1 : 1,
+    name,
+    lat: parseFloat(lat),
+    lng: parseFloat(lng),
+    dangerLevel
+  };
+
+  zones.push(newZone);
+
+  res.status(201).json({
+    message: "Zone created successfully",
+    zone: newZone
+  });
 });
 
 app.listen(PORT, () => {
