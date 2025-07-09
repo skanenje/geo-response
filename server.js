@@ -6,7 +6,7 @@ const app = express();
 const PORT = 3000;
 
 // Load blackspot data (hardcoded values)
-const zones = JSON.parse(fs.readFileSync('/data/zone.json', 'utf-8'));
+const zones = JSON.parse(fs.readFileSync('data/zone.json', 'utf-8'));
 console.log(zones)
 
 app.use(cors());
